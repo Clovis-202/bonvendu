@@ -1,0 +1,303 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Connexion — Bonvendu</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Fraunces:opsz,wght@9..144,600;9..144,700&family=Work+Sans:wght@400;500;600;700&family=Space+Grotesk:wght@500;600&display=swap" rel="stylesheet">
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+<style>
+  :root{
+    --ink:#1C2027; --cream:#FAF6EF; --indigo:#1B2A4A; --indigo-light:#28406B;
+    --gold:#E0A526; --gold-dark:#B9820E; --teal:#0F5C5C; --coral:#D64545;
+    --line:#E4DCCB; --paper:#FFFDF9;
+  }
+  *{box-sizing:border-box; margin:0; padding:0;}
+  body{font-family:'Work Sans', sans-serif; background:var(--indigo); color:var(--ink); line-height:1.5; overflow-x:hidden; min-height:100vh;}
+  h1,h2{font-family:'Fraunces', serif; font-weight:700; letter-spacing:-0.01em;}
+  a{color:inherit; text-decoration:none;}
+
+  .page{min-height:100vh; display:flex; align-items:center; justify-content:center; padding:40px 20px;}
+  .card{
+    background:var(--paper); border-radius:14px; max-width:400px; width:100%;
+    padding:36px 32px; box-shadow:0 30px 60px rgba(0,0,0,0.25);
+  }
+  .logo{font-family:'Fraunces', serif; font-size:24px; font-weight:700; text-align:center; margin-bottom:6px; color:var(--indigo);}
+  .logo .dot{color:var(--gold);}
+  .subtitle{text-align:center; font-size:12.5px; color:#8a8478; margin-bottom:24px;}
+
+  .toggle-row{display:flex; background:var(--cream); border-radius:8px; padding:4px; margin-bottom:24px;}
+  .toggle-btn{flex:1; text-align:center; padding:9px; border-radius:6px; font-size:13px; font-weight:600; cursor:pointer; color:#8a8478;}
+  .toggle-btn.active{background:var(--indigo); color:var(--cream);}
+
+  .field{margin-bottom:14px;}
+  .field label{display:block; font-size:12.5px; font-weight:600; margin-bottom:5px;}
+  .field input{
+    width:100%; padding:11px 13px; border:1px solid var(--line); border-radius:6px;
+    font-family:'Work Sans'; font-size:13.5px; background:var(--cream); color:var(--ink);
+  }
+  .field-row{display:grid; grid-template-columns:1fr 1fr; gap:12px;}
+  .hint{font-size:11px; color:#8a8478; margin-top:4px;}
+
+  .btn{width:100%; padding:12px; border-radius:6px; font-size:14px; font-weight:700; cursor:pointer; border:none; text-align:center; display:block;}
+  .btn-gold{background:var(--gold); color:var(--indigo);}
+  .btn-gold:disabled{opacity:0.6; cursor:not-allowed;}
+
+  .referral-note{
+    background:#FBF3E4; border:1px solid var(--gold); border-radius:6px; padding:10px 12px;
+    font-size:11.5px; color:#5c4712; margin-bottom:14px; display:none;
+  }
+  .referral-note.show{display:block;}
+
+  .msg-box{border-radius:6px; padding:10px 12px; font-size:12.5px; margin-bottom:14px; display:none;}
+  .msg-box.error{display:block; background:#FBEAEA; color:var(--coral); border:1px solid var(--coral);}
+  .msg-box.success{display:block; background:#E3F1EC; color:var(--teal); border:1px solid var(--teal);}
+
+  .form-panel{display:none;}
+  .form-panel.active{display:block;}
+
+  .loggedin{display:none; text-align:center;}
+  .loggedin.active{display:block;}
+  .loggedin .avatar{
+    width:64px; height:64px; border-radius:50%; background:linear-gradient(135deg, var(--gold), var(--gold-dark));
+    display:flex; align-items:center; justify-content:center; font-family:'Fraunces'; font-weight:700; color:var(--indigo); font-size:24px;
+    margin:0 auto 14px;
+  }
+  .loggedin h2{font-size:18px; margin-bottom:4px;}
+  .loggedin p{font-size:12.5px; color:#8a8478; margin-bottom:20px;}
+</style>
+</head>
+<body>
+
+<div class="page">
+  <div class="card">
+    <div class="logo">Bonvendu<span class="dot">.</span></div>
+    <div class="subtitle" id="subtitle">Achetez, vendez, échangez près de chez vous</div>
+
+    <div id="authBox">
+      <div class="toggle-row">
+        <div class="toggle-btn active" id="btnLogin" onclick="showPanel('login')">Connexion</div>
+        <div class="toggle-btn" id="btnSignup" onclick="showPanel('signup')">Inscription</div>
+      </div>
+
+      <div class="msg-box" id="msgBox"></div>
+
+      <!-- LOGIN -->
+      <div class="form-panel active" id="panel-login">
+        <div class="field">
+          <label>E-mail</label>
+          <input type="email" id="loginEmail" placeholder="vous@exemple.com">
+        </div>
+        <div class="field">
+          <label>Mot de passe</label>
+          <input type="password" id="loginPassword" placeholder="••••••••">
+        </div>
+        <button class="btn btn-gold" id="loginBtn" onclick="handleLogin()">Se connecter</button>
+      </div>
+
+      <!-- SIGNUP -->
+      <div class="form-panel" id="panel-signup">
+        <div class="field-row">
+          <div class="field">
+            <label>Prénom</label>
+            <input type="text" id="firstName" placeholder="Amadou">
+          </div>
+          <div class="field">
+            <label>Nom</label>
+            <input type="text" id="lastName" placeholder="Diallo">
+          </div>
+        </div>
+        <div class="field">
+          <label>E-mail</label>
+          <input type="email" id="signupEmail" placeholder="vous@exemple.com">
+        </div>
+        <div class="field">
+          <label>Mot de passe</label>
+          <input type="password" id="signupPassword" placeholder="8 caractères minimum">
+        </div>
+        <div class="field">
+          <label>Pays</label>
+          <input type="text" id="country" placeholder="Sénégal" value="Sénégal">
+        </div>
+        <div class="field">
+          <label>Code de parrainage <span class="hint">(optionnel)</span></label>
+          <input type="text" id="refCode" placeholder="Ex: AMD-7K2X" oninput="toggleRefNote()">
+        </div>
+        <div class="referral-note" id="refNote">🎁 Vous bénéficierez de -50% sur votre premier mois Premium grâce à ce code.</div>
+
+        <button class="btn btn-gold" id="signupBtn" onclick="handleSignup()">Créer mon compte</button>
+      </div>
+    </div>
+
+    <!-- LOGGED IN STATE -->
+    <div class="loggedin" id="loggedInBox">
+      <div class="avatar" id="avatarInitial">?</div>
+      <h2 id="welcomeName">Bienvenue !</h2>
+      <p id="welcomeEmail"></p>
+      <button class="btn btn-gold" onclick="handleLogout()">Se déconnecter</button>
+    </div>
+  </div>
+</div>
+
+<script>
+  // ⚠️ La clé "publishable" est publique par conception, sans danger à exposer ici.
+  const SUPABASE_URL = 'https://wvukcfapopcpwhwbhpxw.supabase.co';
+  const SUPABASE_KEY = 'sb_publishable_O24D2_f7qfG5Dz-m20PuGw_mkoisGM0';
+  const supabase = window.supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
+
+  function showPanel(which){
+    document.getElementById('btnLogin').classList.toggle('active', which==='login');
+    document.getElementById('btnSignup').classList.toggle('active', which==='signup');
+    document.getElementById('panel-login').classList.toggle('active', which==='login');
+    document.getElementById('panel-signup').classList.toggle('active', which==='signup');
+    hideMsg();
+  }
+
+  function toggleRefNote(){
+    const val = document.getElementById('refCode').value.trim();
+    document.getElementById('refNote').classList.toggle('show', val.length > 2);
+  }
+
+  function showMsg(text, type){
+    const box = document.getElementById('msgBox');
+    box.textContent = text;
+    box.className = 'msg-box ' + type;
+  }
+  function hideMsg(){
+    document.getElementById('msgBox').className = 'msg-box';
+  }
+
+  function generateReferralCode(firstName){
+    const prefix = (firstName || 'USR').substring(0,3).toUpperCase();
+    const rand = Math.random().toString(36).substring(2,6).toUpperCase();
+    return prefix + '-' + rand;
+  }
+
+  async function handleSignup(){
+    const firstName = document.getElementById('firstName').value.trim();
+    const lastName = document.getElementById('lastName').value.trim();
+    const email = document.getElementById('signupEmail').value.trim();
+    const password = document.getElementById('signupPassword').value;
+    const country = document.getElementById('country').value.trim();
+    const refCodeInput = document.getElementById('refCode').value.trim();
+
+    if(!firstName || !email || !password){
+      showMsg('Merci de remplir au moins prénom, e-mail et mot de passe.', 'error');
+      return;
+    }
+    if(password.length < 8){
+      showMsg('Le mot de passe doit contenir au moins 8 caractères.', 'error');
+      return;
+    }
+
+    const signupBtn = document.getElementById('signupBtn');
+    signupBtn.disabled = true;
+    signupBtn.textContent = 'Création en cours...';
+
+    const { data, error } = await supabase.auth.signUp({ email, password });
+
+    if(error){
+      showMsg('Erreur : ' + error.message, 'error');
+      signupBtn.disabled = false;
+      signupBtn.textContent = 'Créer mon compte';
+      return;
+    }
+
+    const userId = data.user.id;
+    const myReferralCode = generateReferralCode(firstName);
+
+    const { error: profileError } = await supabase.from('profiles').insert({
+      id: userId,
+      first_name: firstName,
+      last_name: lastName,
+      referral_code: myReferralCode
+    });
+
+    if(profileError){
+      showMsg('Compte créé, mais erreur de profil : ' + profileError.message, 'error');
+      signupBtn.disabled = false;
+      signupBtn.textContent = 'Créer mon compte';
+      return;
+    }
+
+    // Si un code de parrainage a été saisi, on tente d'enregistrer le parrainage
+    if(refCodeInput.length > 2){
+      const { data: referrer } = await supabase
+        .from('profiles')
+        .select('id')
+        .eq('referral_code', refCodeInput)
+        .maybeSingle();
+
+      if(referrer){
+        await supabase.from('referrals').insert({
+          referrer_id: referrer.id,
+          referred_id: userId,
+          reward_status: 'pending'
+        });
+      }
+    }
+
+    showMsg('Compte créé avec succès ! Vérifiez votre e-mail si une confirmation est requise, sinon vous êtes déjà connecté.', 'success');
+    checkSession();
+  }
+
+  async function handleLogin(){
+    const email = document.getElementById('loginEmail').value.trim();
+    const password = document.getElementById('loginPassword').value;
+
+    if(!email || !password){
+      showMsg('Merci de renseigner e-mail et mot de passe.', 'error');
+      return;
+    }
+
+    const loginBtn = document.getElementById('loginBtn');
+    loginBtn.disabled = true;
+    loginBtn.textContent = 'Connexion...';
+
+    const { error } = await supabase.auth.signInWithPassword({ email, password });
+
+    loginBtn.disabled = false;
+    loginBtn.textContent = 'Se connecter';
+
+    if(error){
+      showMsg('Erreur : ' + error.message, 'error');
+      return;
+    }
+
+    checkSession();
+  }
+
+  async function handleLogout(){
+    await supabase.auth.signOut();
+    checkSession();
+  }
+
+  async function checkSession(){
+    const { data: { session } } = await supabase.auth.getSession();
+
+    if(session){
+      const userId = session.user.id;
+      const { data: profile } = await supabase.from('profiles').select('first_name, last_name').eq('id', userId).maybeSingle();
+
+      document.getElementById('authBox').style.display = 'none';
+      document.getElementById('loggedInBox').classList.add('active');
+      document.getElementById('subtitle').textContent = 'Vous êtes connecté';
+
+      const fname = profile ? profile.first_name : session.user.email;
+      document.getElementById('avatarInitial').textContent = (fname || '?').charAt(0).toUpperCase();
+      document.getElementById('welcomeName').textContent = 'Bonjour, ' + (fname || 'vous') + ' 👋';
+      document.getElementById('welcomeEmail').textContent = session.user.email;
+    } else {
+      document.getElementById('authBox').style.display = 'block';
+      document.getElementById('loggedInBox').classList.remove('active');
+      document.getElementById('subtitle').textContent = 'Achetez, vendez, échangez près de chez vous';
+    }
+  }
+
+  checkSession();
+</script>
+
+</body>
+          </html>
+          
