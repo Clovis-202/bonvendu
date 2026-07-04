@@ -141,10 +141,32 @@
 </div>
 
 <script>
+  // Affiche toute erreur JavaScript directement sur la page (utile pour déboguer sans console, sur mobile)
+  window.onerror = function(message, source, lineno, colno, error){
+    const box = document.getElementById('msgBox');
+    if(box){
+      box.textContent = '🔴 Erreur technique : ' + message + ' (ligne ' + lineno + ')';
+      box.className = 'msg-box error';
+    }
+    return false;
+  };
+
   // ⚠️ La clé "publishable" est publique par conception, sans danger à exposer ici.
   const SUPABASE_URL = 'https://wvukcfapopcpwhwbhpxw.supabase.co';
   const SUPABASE_KEY = 'sb_publishable_O24D2_f7qfG5Dz-m20PuGw_mkoisGM0';
-  const supabase = window.supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
+  let supabase;
+  try {
+    if(!window.supabase){
+      throw new Error('La librairie Supabase ne s\'est pas chargée (window.supabase est introuvable).');
+    }
+    supabase = window.supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
+  } catch(e){
+    document.addEventListener('DOMContentLoaded', function(){
+      const box = document.getElementById('msgBox');
+      box.textContent = '🔴 Erreur d\'initialisation : ' + e.message;
+      box.className = 'msg-box error';
+    });
+  }
 
   function showPanel(which){
     document.getElementById('btnLogin').classList.toggle('active', which==='login');
@@ -195,51 +217,56 @@
     signupBtn.disabled = true;
     signupBtn.textContent = 'Création en cours...';
 
-    const { data, error } = await supabase.auth.signUp({ email, password });
+    try {
+      if(!supabase){ throw new Error('La connexion à Supabase n\'a pas pu être établie.'); }
 
-    if(error){
-      showMsg('Erreur : ' + error.message, 'error');
-      signupBtn.disabled = false;
-      signupBtn.textContent = 'Créer mon compte';
-      return;
-    }
+      const { data, error } = await supabase.auth.signUp({ email, password });
 
-    const userId = data.user.id;
-    const myReferralCode = generateReferralCode(firstName);
-
-    const { error: profileError } = await supabase.from('profiles').insert({
-      id: userId,
-      first_name: firstName,
-      last_name: lastName,
-      referral_code: myReferralCode
-    });
-
-    if(profileError){
-      showMsg('Compte créé, mais erreur de profil : ' + profileError.message, 'error');
-      signupBtn.disabled = false;
-      signupBtn.textContent = 'Créer mon compte';
-      return;
-    }
-
-    // Si un code de parrainage a été saisi, on tente d'enregistrer le parrainage
-    if(refCodeInput.length > 2){
-      const { data: referrer } = await supabase
-        .from('profiles')
-        .select('id')
-        .eq('referral_code', refCodeInput)
-        .maybeSingle();
-
-      if(referrer){
-        await supabase.from('referrals').insert({
-          referrer_id: referrer.id,
-          referred_id: userId,
-          reward_status: 'pending'
-        });
+      if(error){
+        showMsg('Erreur : ' + error.message, 'error');
+        return;
       }
-    }
 
-    showMsg('Compte créé avec succès ! Vérifiez votre e-mail si une confirmation est requise, sinon vous êtes déjà connecté.', 'success');
-    checkSession();
+      const userId = data.user.id;
+      const myReferralCode = generateReferralCode(firstName);
+
+      const { error: profileError } = await supabase.from('profiles').insert({
+        id: userId,
+        first_name: firstName,
+        last_name: lastName,
+        referral_code: myReferralCode
+      });
+
+      if(profileError){
+        showMsg('Compte créé, mais erreur de profil : ' + profileError.message, 'error');
+        return;
+      }
+
+      // Si un code de parrainage a été saisi, on tente d'enregistrer le parrainage
+      if(refCodeInput.length > 2){
+        const { data: referrer } = await supabase
+          .from('profiles')
+          .select('id')
+          .eq('referral_code', refCodeInput)
+          .maybeSingle();
+
+        if(referrer){
+          await supabase.from('referrals').insert({
+            referrer_id: referrer.id,
+            referred_id: userId,
+            reward_status: 'pending'
+          });
+        }
+      }
+
+      showMsg('Compte créé avec succès ! Vérifiez votre e-mail si une confirmation est requise, sinon vous êtes déjà connecté.', 'success');
+      checkSession();
+    } catch(e){
+      showMsg('🔴 Erreur inattendue : ' + e.message, 'error');
+    } finally {
+      signupBtn.disabled = false;
+      signupBtn.textContent = 'Créer mon compte';
+    }
   }
 
   async function handleLogin(){
@@ -255,17 +282,23 @@
     loginBtn.disabled = true;
     loginBtn.textContent = 'Connexion...';
 
-    const { error } = await supabase.auth.signInWithPassword({ email, password });
+    try {
+      if(!supabase){ throw new Error('La connexion à Supabase n\'a pas pu être établie.'); }
 
-    loginBtn.disabled = false;
-    loginBtn.textContent = 'Se connecter';
+      const { error } = await supabase.auth.signInWithPassword({ email, password });
 
-    if(error){
-      showMsg('Erreur : ' + error.message, 'error');
-      return;
+      if(error){
+        showMsg('Erreur : ' + error.message, 'error');
+        return;
+      }
+
+      checkSession();
+    } catch(e){
+      showMsg('🔴 Erreur inattendue : ' + e.message, 'error');
+    } finally {
+      loginBtn.disabled = false;
+      loginBtn.textContent = 'Se connecter';
     }
-
-    checkSession();
   }
 
   async function handleLogout(){
@@ -274,6 +307,7 @@
   }
 
   async function checkSession(){
+    if(!supabase) return;
     const { data: { session } } = await supabase.auth.getSession();
 
     if(session){
@@ -299,5 +333,4 @@
 </script>
 
 </body>
-          </html>
-          
+</html>
